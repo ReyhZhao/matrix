@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mautrix-telegram
+  labels:
+    app: mautrix-telegram
+  namespace: matrix
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: mautrix-telegram
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: mautrix-telegram
+    spec:
+      #serviceAccountName: bitwarden
+      securityContext:
+       fsGroup: 1337
+       runAsUser: 1337
+       runAsGroup: 1337
+    spec:
+      containers:
+      - name: mautrix-telegram
+        image: dock.mau.dev/mautrix/telegram:latest
+
+        env:
+
+        ports:
+          - containerPort: 8008
+            name: http
+            protocol: TCP
+          - containerPort: 8448
+            name: federation
+            protocol: TCP
+
+        volumeMounts:
+          - name: data
+            mountPath: /data
+
+
+      volumes:
+        - name: data
+          hostPath:
+            path: /container-files/mautrix-telegram/data
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mautrix-telegram
+  namespace: matrix
+
+spec:
+  ports:
+  - name: http
+    port: 29317
+    protocol: TCP
+    targetPort: 29317
+  selector:
+    app: mautrix-telegram
+  sessionAffinity: None
+  type: NodePort
+
+
+status:
+  loadBalancer: {}
