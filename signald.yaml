@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: signald
+  labels:
+    app: signald
+  namespace: matrix
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: signald
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: signald
+    spec:
+      #serviceAccountName: bitwarden
+      securityContext:
+       fsGroup: 1337
+       runAsUser: 1337
+       runAsGroup: 1337
+      containers:
+      - name: signald
+        image: docker.io/signald/signald
+
+        ports:
+          - containerPort: 8090
+            name: http
+            protocol: TCP
+
+        volumeMounts:
+          - name: etc
+            mountPath: /signald
+
+
+      volumes:
+        - name: etc
+          hostPath:
+            path: /container-files/signald/
