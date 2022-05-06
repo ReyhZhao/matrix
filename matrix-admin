@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synapse-admin
+  labels:
+    app: synapse-admin
+  namespace: matrix
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: synapse-admin
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: synapse-admin
+    spec:
+#      serviceAccountName: bitwarden
+#      securityContext:
+#       fsGroup: 1002
+#       runAsUser: 1002
+#       runAsGroup: 1002
+    spec:
+      containers:
+      - name: synapse-admin
+        image: awesometechnologies/synapse-admin
+
+        env:
+          - name: REACT_APP_SERVER
+            value: "https://matrix.vels.online"
+
+
+        ports:
+          - containerPort: 80
+            name: http
+            protocol: TCP
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: synapse-admin
+  namespace: matrix
+
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: synapse-admin
+  sessionAffinity: None
+  type: NodePort
+
+
+status:
+  loadBalancer: {}
+
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-synapse-admin
+  namespace: matrix
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 100M
+spec:
+  rules:
+  - host: matrix-admin.vels.online
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: synapse-admin
+            port:
+              number: 80
