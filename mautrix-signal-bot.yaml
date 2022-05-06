@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mautrix-signal
+  labels:
+    app: mautrix-signal
+  namespace: matrix
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: mautrix-signal
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: mautrix-signal
+    spec:
+      #serviceAccountName: bitwarden
+      securityContext:
+       fsGroup: 1002
+       runAsUser: 1002
+       runAsGroup: 1002
+    spec:
+      containers:
+      - name: mautrix-signal
+        image: dock.mau.dev/mautrix/signal:latest
+
+        env:
+
+        ports:
+          - containerPort: 29328
+            name: http
+            protocol: TCP
+
+        volumeMounts:
+          - name: data
+            mountPath: /data
+          - name: signald
+            mountPath: /signald
+
+
+      volumes:
+        - name: data
+          hostPath:
+            path: /container-files/mautrix-signal/data
+        - name: signald
+          hostPath:
+            path: /container-files/signald
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mautrix-signal
+  namespace: matrix
+
+spec:
+  ports:
+  - name: http
+    port: 29328
+    protocol: TCP
+    targetPort: 29328
+  selector:
+    app: mautrix-signal
+  sessionAffinity: None
+  type: NodePort
+
+
+status:
+  loadBalancer: {}
