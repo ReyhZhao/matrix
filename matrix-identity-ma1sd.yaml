@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ma1sd
+  labels:
+    app: ma1sd
+  namespace: matrix
+spec:
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: ma1sd
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: ma1sd
+    spec:
+#      serviceAccountName: bitwarden
+#      securityContext:
+#       fsGroup: 1002
+#       runAsUser: 1002
+#       runAsGroup: 1002
+    spec:
+      containers:
+      - name: ma1sd
+        image: ma1uta/ma1sd
+
+        env:
+          - name: MATRIX_DOMAIN
+            value: "vels.online"
+
+        ports:
+          - containerPort: 8090
+            name: http
+            protocol: TCP
+
+        volumeMounts:
+          - name: etc
+            mountPath: /etc/ma1sd
+          - name: var
+            mountPath: /var/ma1sd
+          - name: synapse-data
+            mountPath: /etc/ma1sd/homeserver.db
+
+
+      volumes:
+        - name: etc
+          hostPath:
+            path: /container-files/ma1sd/etc
+        - name: var
+          hostPath:
+            path: /container-files/ma1sd/var
+        - name: synapse-data
+          hostPath:
+            path: /container-files/synapse/data/homeserver.db
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ma1sd
+  namespace: matrix
+
+spec:
+  ports:
+  - name: http
+    port: 8090
+    protocol: TCP
+    targetPort: 8090
+  selector:
+    app: ma1sd
+  sessionAffinity: None
+  type: NodePort
+
+
+status:
+  loadBalancer: {}
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-ma1sd
+  namespace: matrix
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 100M
+spec:
+  rules:
+  - host: matrix.vels.online
+    http:
+      paths:
+      - path: /_matrix/identity
+        pathType: Prefix
+        backend:
+          service:
+            name: ma1sd
+            port:
+              number: 8090
+
+      - path: /_matrix/client/r0/user_directory
+        pathType: Prefix
+        backend:
+          service:
+            name: ma1sd
+            port:
+              number: 8090
+
+      - path: /_matrix/client/r0/register/(email|msisdn)/requestToken$
+        pathType: Prefix
+        backend:
+          service:
+            name: ma1sd
+            port:
+              number: 8090
+
+      - path: /_matrix/client/r0/user_directory
+        pathType: Prefix
+        backend:
+          service:
+            name: ma1sd
+            port:
+              number: 8090
+~                             
+        
